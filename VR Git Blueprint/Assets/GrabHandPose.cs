@@ -4,9 +4,14 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 public class GrabHandPose : MonoBehaviour
 {
+    public float poseTransitionDuration;
     public HandData rightHandPose;
+    public HandData leftHandPose;
     private Vector3 startingHandPosition;
     private Vector3 finalHandPosition;
     private Quaternion startingHandRotation;
@@ -20,6 +25,7 @@ public class GrabHandPose : MonoBehaviour
         grabInteractable.selectEntered.AddListener(SetupPose);
         grabInteractable.selectExited.AddListener(UnsetPose);
         rightHandPose.gameObject.SetActive(false);
+        leftHandPose.gameObject.SetActive(false);
     }
 
     public void SetupPose(SelectEnterEventArgs arg)
@@ -28,8 +34,16 @@ public class GrabHandPose : MonoBehaviour
         {
             HandData handData = arg.interactorObject.transform.GetComponentInChildren<HandData>();
             handData.animator.enabled = false;
-            SetHandDataValues(handData, rightHandPose);
-            SetHandData(handData, finalHandPosition, finalHandRotation, finalFingerRotation);
+            if (handData.handType == HandData.HandModelType.right)
+            {
+                SetHandDataValues(handData, rightHandPose);
+            }
+            else
+            {
+                SetHandDataValues(handData, leftHandPose);
+            }
+
+            StartCoroutine(SetHandDataRoutine(handData, finalHandPosition, finalHandRotation, finalFingerRotation, startingHandPosition, startingHandRotation, startingFingerRotation));
         }
     }
     public void UnsetPose(BaseInteractionEventArgs arg)
@@ -37,8 +51,8 @@ public class GrabHandPose : MonoBehaviour
         if (arg.interactorObject is XRDirectInteractor)
         {
             HandData handData = arg.interactorObject.transform.GetComponentInChildren<HandData>();
-            handData.animator.enabled = true;            
-            SetHandData(handData, startingHandPosition, startingHandRotation, startingFingerRotation);
+            handData.animator.enabled = true;
+            StartCoroutine(SetHandDataRoutine(handData, startingHandPosition, startingHandRotation, startingFingerRotation, finalHandPosition, finalHandRotation, finalFingerRotation));
         }
     }
     public void SetHandDataValues(HandData h1,HandData h2)
@@ -67,7 +81,52 @@ public class GrabHandPose : MonoBehaviour
             h.fingerBones[i].localRotation = newBonesRotation[i];
         }
     }
+    public IEnumerator SetHandDataRoutine(HandData h, Vector3 newPosition, Quaternion newRotation, Quaternion[] newBonesRotation, Vector3 startingPosition, Quaternion startingRotation, Quaternion[] startingBonesRotation)
+    {
+        float timer = 0;
+        while (timer < poseTransitionDuration)
+        {
+            Vector3 p = Vector3.Lerp(startingPosition, newPosition, timer / poseTransitionDuration);
+            Quaternion r = Quaternion.Lerp(startingRotation, newRotation, timer / poseTransitionDuration);
 
+            h.root.localPosition = p;
+            h.root.localRotation = r;
+
+            for (int i = 0; i < newBonesRotation.Length; i++)
+            {
+                h.fingerBones[i].localRotation = Quaternion.Lerp(startingBonesRotation[i], newBonesRotation[i], timer / poseTransitionDuration);
+            }
+            timer += Time.deltaTime;
+            yield return null;
+        }
+    }
+    #if UNITY_EDITOR
+    [MenuItem("Tools/Mirror Selected Right Grab Pose")]
+    public static void MirrorRightPose()
+    {
+        Debug.Log("MIRROR RIGHT POSE");
+        GrabHandPose handPose = Selection.activeGameObject.GetComponent<GrabHandPose>();
+        handPose.MirrorPose(handPose.leftHandPose, handPose.rightHandPose);
+    }
+    #endif
+
+    public void MirrorPose(HandData poseToMirror, HandData poseUsedToMirror)
+    {
+        Vector3 mirroredPosition = poseUsedToMirror.root.localPosition;
+        mirroredPosition.x *= -1;
+
+        Quaternion mirroredQuaternion = poseUsedToMirror.root.localRotation;
+        mirroredQuaternion.y *= -1;
+        mirroredQuaternion.z *= -1;
+
+        poseToMirror.root.localPosition = mirroredPosition;
+        poseToMirror.root.localRotation = mirroredQuaternion;
+
+        for (int i = 0; i < poseUsedToMirror.fingerBones.Length; i++)
+        {
+            poseToMirror.fingerBones[i].localRotation = poseUsedToMirror.fingerBones[i].localRotation;
+        }
+    }
     // Update is called once per frame
     void Update()
     {
