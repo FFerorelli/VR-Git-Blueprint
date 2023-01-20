@@ -5067,6 +5067,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 10
+  turnSpeed: 60
   moveInputSource:
     m_UseReference: 1
     m_Action:
@@ -5080,8 +5081,26 @@ MonoBehaviour:
       m_Flags: 0
     m_Reference: {fileID: 6972639530819350904, guid: c348712bda248c246b8c49b3db54643f,
       type: 3}
+  turnInputSource:
+    m_UseReference: 1
+    m_Action:
+      m_Name: Turn Input Source
+      m_Type: 0
+      m_ExpectedControlType: 
+      m_Id: b5e4002d-5c20-4e80-9863-607488d1ef3b
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    m_Reference: {fileID: -6493913391331992944, guid: c348712bda248c246b8c49b3db54643f,
+      type: 3}
   rb: {fileID: 1920083226}
+  bodyCollider: {fileID: 1507898639}
   directionSource: {fileID: 890851690}
+  turnSource: {fileID: 890851690}
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 1
 --- !u!1 &837061223
 GameObject:
   m_ObjectHideFlags: 0
