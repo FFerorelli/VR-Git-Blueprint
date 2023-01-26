@@ -7,11 +7,18 @@ public class ContinuousMovementPhysics : MonoBehaviour
 {
     public float speed = 1;
     public float turnSpeed = 60;
+    private float jumpVelocity = 7;
+    public float jumpHeight = 1.5f;
+    public float minJumpWithHandSpeed = 2f;
+    public float maxJumpWithHandSpeed = 7f;
     
     public InputActionProperty moveInputSource;
     public InputActionProperty turnInputSource;
+    public InputActionProperty jumpInputSource;
 
     public Rigidbody rb;
+    public Rigidbody leftHandRB;
+    public Rigidbody rightHandRB;
     public CapsuleCollider bodyCollider;
     public Transform directionSource;
     public Transform turnSource;
@@ -19,6 +26,10 @@ public class ContinuousMovementPhysics : MonoBehaviour
 
     private Vector2 inputMoveAxis;
     private float inputTurnAxis;
+
+    private bool isGrounded;
+    public bool onlyMoveWhenGrounded = false;
+    public bool jumpWithHand = true;
     // Start is called before the first frame update
     void Start()
     {
@@ -30,12 +41,31 @@ public class ContinuousMovementPhysics : MonoBehaviour
     {
         inputMoveAxis = moveInputSource.action.ReadValue<Vector2>();
         inputTurnAxis = turnInputSource.action.ReadValue<Vector2>().x;
+
+        bool jumpInput = jumpInputSource.action.WasPressedThisFrame();
+        if (!jumpWithHand)
+        {
+            if (jumpInput && isGrounded)
+            {
+                jumpVelocity = Mathf.Sqrt(2 * -Physics.gravity.y * jumpHeight);
+                rb.velocity = Vector3.up * jumpVelocity;
+            }
+        }
+        else
+        {
+            bool inputJumpPressed = jumpInputSource.action.IsPressed();
+            float handSpeed = ((leftHandRB.velocity - rb.velocity).magnitude + (rightHandRB.velocity - rb.velocity).magnitude) / 2;
+            if (inputJumpPressed && isGrounded && handSpeed > minJumpWithHandSpeed)
+            {
+                rb.velocity = Vector3.up * Mathf.Clamp(handSpeed, minJumpWithHandSpeed, maxJumpWithHandSpeed);
+            }
+        }
     }
     private void FixedUpdate()
     {
-        bool isGrounded = CheckIfGrounded();
+        isGrounded = CheckIfGrounded();
 
-        if (isGrounded)
+        if (!onlyMoveWhenGrounded || (onlyMoveWhenGrounded && isGrounded))
         {
             Quaternion yaw = Quaternion.Euler(0, directionSource.eulerAngles.y, 0);
             Vector3 direction = yaw * new Vector3(inputMoveAxis.x, 0, inputMoveAxis.y);
